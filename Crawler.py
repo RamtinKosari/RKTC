@@ -21,3 +21,9 @@ class RKTC:
             return response['message']['content'].strip().replace('"', '').replace("'", "")
         except Exception as e:
             printRKTC(FAILURE, "Cannot Generate Response : {}{}{}".format(ERR, e, RESET))
+    # - Method to Load JSON
+    def METHOD_LOAD_JSON(self, filename, default):
+        if os.path.exists(filename):
+            with open(filename, 'r', encoding = 'utf-8') as f:
+                return json.load(f)
+        return default
