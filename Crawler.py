@@ -153,3 +153,118 @@ class RKTC:
             "category_messages.json",
             result
         )
+    # - Main Workflow
+    async def METHOD_RUN(self):
+        # - Initialize Telegram Client
+        self.client = TelegramClient(
+            'crawler_session',
+            RKTC_API_ID,
+            RKTC_API_HASH,
+            proxy = RKTC_PROXY,
+            connection = ConnectionTcpFull
+        )
+        # - Open Session
+        async with self.client:
+            # - Load Data
+            all_messages = self.METHOD_LOAD_JSON('messages.json', [])
+            categories = self.METHOD_LOAD_JSON('categories.json', [])
+            self.METHOD_BUILD_CATEGORY_MESSAGES(categories, all_messages)
+            processed_ids = {
+                item['id']
+                for item in all_messages
+            }
+            printRKTC(SUCCESS, "Session Initialized, Starting ...")
+            async for message in self.client.iter_messages(
+                RKTC_TARGET_CHANNEL,
+                limit = RKTC_ITERATION_LIMIT
+            ):
+                # - Ignore Processed or Non-Text Messages
+                if (
+                    not message.text
+                    or message.id in processed_ids
+                ):
+                    continue
+                text = message.text.strip()
+                msg_time = message.date.isoformat()
+                parent_id = message.reply_to_msg_id
+                # - Case 1 : Reply Message
+                if parent_id:
+
+                    parent = self.METHOD_FIND_MESSAGE(
+                        all_messages,
+                        parent_id
+                    )
+                    # - Parent Already Categorized, Inherit Category
+                    if parent:
+                        msg_obj = {
+                            "id": message.id,
+                            "parent_id": parent_id,
+                            "timestamp": msg_time,
+                            "text": text,
+                            "context": "reply",
+                            "category_id": parent["category_id"]
+                        }
+                        all_messages.append(msg_obj)
+                        self.METHOD_SAVE_JSON(
+                            'messages.json',
+                            all_messages
+                        )
+                        continue
+                    # - Parent is Unavailable, Ignore Invalid Messages
+                    if not self.METHOD_IS_VALID_MESSAGE(text):
+                        continue
+                # - Case 2 : Standalone Message
+                else:
+                    if not self.METHOD_IS_VALID_MESSAGE(text):
+                        continue
+                # - AI Analysis
+                printRKTC(PROCESS, "Analysing Message : {}{}{}".format(DARK_INFO, str(text[:30]).strip(), RESET))
+                category_context = self.METHOD_GET_CATEGORY_NAMES(categories)
+                # - Generate Prompt
+                prompt = RKTC_PROMPT.format(category_context, text)
+                # - Get Model's Response
+                response = self.METHOD_CHAT(prompt)
+                if not response:
+                    continue
+                # - Parse AI Response
+                try:
+                    category_line, keyword_line = response.split("\n", 1)
+                    category_name = (category_line.replace("Category:", "").strip())
+                    keywords = (keyword_line.replace("Keywords:", "").strip())
+                except Exception as e:
+                    printRKTC(FAILURE, "Invalid AI Response Format : {}{}{}".format(ERR, e, RESET))
+                    continue
+                # - Validate Category
+                if (not category_name or len(category_name) < 3):
+                    printRKTC(FAILURE, "Invalid Category")
+                    continue
+                printRKTC(SUCCESS, "Category : {}{}{}".format(LIGHT_INFO, category_name, RESET))
+                printRKTC(SUCCESS, "Keywords : {}{}{}".format(LIGHT_INFO, keywords, RESET))
+                # - Create / Find Category
+                category = self.METHOD_ADD_CATEGORY(categories, category_name)
+                # - Create Message Object
+                msg_obj = {
+                    "id": message.id,
+                    "parent_id": parent_id,
+                    "timestamp": msg_time,
+                    "text": text,
+                    "keywords": keywords,
+                    "category_id": category["id"],
+                    "context": "main"
+                }
+                # - Save Message
+                all_messages.append(
+                    msg_obj
+                )
+                # - Keep Chronological Order
+                all_messages.sort(
+                    key = lambda x: x["timestamp"]
+                )
+                # - Save Files
+                self.METHOD_SAVE_JSON('messages.json', all_messages)
+                self.METHOD_SAVE_JSON('categories.json', categories)
+                await asyncio.sleep(1)
+
+# - Run Crawler
+crawler = RKTC()
+asyncio.run(crawler.METHOD_RUN())
