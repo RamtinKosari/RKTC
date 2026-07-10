@@ -29,7 +29,7 @@ RKTC_OPTIONS = {
 # - Data File
 RKTC_DATA_FILE = 'germany_data.json'
 # - Iteration Limit
-RKTC_ITERATION_LIMIT = 100
+RKTC_ITERATION_LIMIT = 25000
 # - Message Length Limit
 RKTC_MIN_MESSAGE_LENGTH = 10
 # - Agent Prompt
