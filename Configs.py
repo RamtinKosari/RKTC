@@ -18,6 +18,13 @@ RKTC_API_HASH = os.environ.get("RKTC_API_HASH")
 RKTC_TARGET_CHANNEL = 'https://t.me/GermanyComma'
 # - Proxy Settings
 RKTC_PROXY = (socks.SOCKS5, '127.0.0.1', 2080)
+# - Language Model
+RKTC_MODEL = "gemma3"
+# - Language Model Options
+RKTC_OPTIONS = {
+    "temperature": 0.1,
+    "top_p": 0.3
+}
 # - Data File
 RKTC_DATA_FILE = 'germany_data.json'
 # - Iteration Limit
