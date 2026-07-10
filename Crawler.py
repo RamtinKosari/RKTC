@@ -62,3 +62,17 @@ class RKTC:
             if category["name"] == name:
                 return category
         return None
+    # - Method to Add New Category
+    def METHOD_ADD_CATEGORY(self, categories, name):
+        existing = self.METHOD_FIND_CATEGORY(
+            categories,
+            name
+        )
+        if existing:
+            return existing
+        new_category = {
+            "id": len(categories) + 1,
+            "name": name
+        }
+        categories.append(new_category)
+        return new_category
