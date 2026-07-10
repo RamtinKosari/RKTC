@@ -76,3 +76,80 @@ class RKTC:
         }
         categories.append(new_category)
         return new_category
+    # - Method to Build Category Messages
+    def METHOD_BUILD_CATEGORY_MESSAGES(
+        self,
+        categories,
+        messages
+    ):
+        result = []
+        # - Create Category Containers
+        category_map = {}
+        for category in categories:
+            category_map[category["id"]] = {
+                "category_id": category["id"],
+                "category_name": category["name"],
+                "messages": []
+            }
+        # - Find Main Messages
+        message_map = {}
+        for message in messages:
+            message_map[message["id"]] = message
+        # - Attach Main Messages
+        for message in messages:
+            if message["category_id"] not in category_map:
+                continue
+            # - Only Main Messages
+            if message["parent_id"] is None:
+                msg_obj = {
+                    "id": message["id"],
+                    "timestamp": message["timestamp"],
+                    "text": message["text"],
+                    "keywords": message.get(
+                        "keywords",
+                        ""
+                    ),
+                    "replies": []
+                }
+                category_map[
+                    message["category_id"]
+                ]["messages"].append(msg_obj)
+        # - Attach Replies
+        main_lookup = {}
+        for category in category_map.values():
+            for msg in category["messages"]:
+                main_lookup[msg["id"]] = msg
+        for message in messages:
+            parent_id = message.get(
+                "parent_id"
+            )
+            if parent_id in main_lookup:
+                reply = {
+                    "id": message["id"],
+                    "timestamp": message["timestamp"],
+                    "text": message["text"],
+                    "keywords": message.get(
+                        "keywords",
+                        ""
+                    )
+                }
+                main_lookup[parent_id]["replies"].append(
+                    reply
+                )
+        # - Sort by Timestamp
+        for category in category_map.values():
+            category["messages"].sort(
+                key = lambda x: x["timestamp"]
+            )
+            for message in category["messages"]:
+                message["replies"].sort(
+                    key = lambda x: x["timestamp"]
+                )
+            result.append(category)
+        result.sort(
+            key = lambda x: x["category_id"]
+        )
+        self.METHOD_SAVE_JSON(
+            "category_messages.json",
+            result
+        )
