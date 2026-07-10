@@ -56,3 +56,9 @@ class RKTC:
                 for cat in categories
             ]
         )
+    # - Method to Find Category
+    def METHOD_FIND_CATEGORY(self, categories, name):
+        for category in categories:
+            if category["name"] == name:
+                return category
+        return None
