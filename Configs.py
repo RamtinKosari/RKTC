@@ -71,3 +71,18 @@ Return ONLY:
 Category: English Category
 Keywords: keyword1, keyword2, keyword3
 """
+# - Ignored Words
+RKTC_IGNORED_WORDS = [
+    "باشه",
+    "اوکی",
+    "ok",
+    "مرسی",
+    "ممنون",
+    "ممنونم",
+    "حتما",
+    "خوبه",
+    "اهان",
+    "آها",
+    "نه",
+    "بله"
+]
