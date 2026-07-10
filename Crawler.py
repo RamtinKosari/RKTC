@@ -31,3 +31,14 @@ class RKTC:
     def METHOD_SAVE_JSON(self, filename, data):
         with open(filename, 'w', encoding = 'utf-8') as f:
             json.dump(data, f, ensure_ascii = False, indent = 4)
+    # - Method to Check if Message is Valid
+    def METHOD_IS_VALID_MESSAGE(self, text):
+        if not text:
+            return False
+        clean = text.strip()
+        ignored_words = RKTC_IGNORED_WORDS
+        if clean.lower() in ignored_words:
+            return False
+        if len(clean) < 20:
+            return False
+        return True
