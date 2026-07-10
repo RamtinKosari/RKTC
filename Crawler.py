@@ -173,11 +173,17 @@ class RKTC:
                 item['id']
                 for item in all_messages
             }
+            start_time = time.time()
+            processed_count = 0
+            total_limit = RKTC_ITERATION_LIMIT
+            durations = []
             printRKTC(SUCCESS, "Session Initialized, Starting ...")
             async for message in self.client.iter_messages(
                 RKTC_TARGET_CHANNEL,
                 limit = RKTC_ITERATION_LIMIT
             ):
+                # - Start Time
+                message_start = time.time()
                 # - Ignore Processed or Non-Text Messages
                 if (
                     not message.text
@@ -263,6 +269,16 @@ class RKTC:
                 # - Save Files
                 self.METHOD_SAVE_JSON('messages.json', all_messages)
                 self.METHOD_SAVE_JSON('categories.json', categories)
+                message_duration = time.time() - message_start
+                durations.append(message_duration)
+                processed_count += 1
+                average_time = sum(durations) / len(durations)
+                remaining = total_limit - processed_count
+                estimated_seconds = remaining * average_time
+                elapsed = time.time() - start_time
+                printRKTC(SUCCESS, (
+                    f"{INFO}Processed: {processed_count}/{total_limit} | "    f"Current: {message_duration:.2f}s | "    f"Average: {average_time:.2f}s | "    f"Remaining: {str(timedelta(seconds=int(estimated_seconds)))}{RESET}"
+                ))
                 await asyncio.sleep(1)
 
 # - Run Crawler

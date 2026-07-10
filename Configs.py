@@ -1,10 +1,11 @@
 # - Import Required Libraries
+from ollama import chat, embed, ChatResponse, ResponseError
 from telethon.network import ConnectionTcpFull
 from telethon import TelegramClient
+from datetime import timedelta
 import sqlite3
 import asyncio
 import ollama
-from ollama import chat, embed, ChatResponse, ResponseError
 import socks
 import json
 import time
