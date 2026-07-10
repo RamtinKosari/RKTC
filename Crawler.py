@@ -48,3 +48,11 @@ class RKTC:
             if msg["id"] == message_id:
                 return msg
         return None
+    # - Method to Get Category Name
+    def METHOD_GET_CATEGORY_NAMES(self, categories):
+        return "\n".join(
+            [
+                f"{cat['id']}. {cat['name']}"
+                for cat in categories
+            ]
+        )
