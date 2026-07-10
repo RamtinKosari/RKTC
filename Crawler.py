@@ -180,7 +180,8 @@ class RKTC:
             printRKTC(SUCCESS, "Session Initialized, Starting ...")
             async for message in self.client.iter_messages(
                 RKTC_TARGET_CHANNEL,
-                limit = RKTC_ITERATION_LIMIT
+                limit = RKTC_ITERATION_LIMIT,
+                reverse = True
             ):
                 # - Start Time
                 message_start = time.time()
@@ -277,9 +278,9 @@ class RKTC:
                 estimated_seconds = remaining * average_time
                 elapsed = time.time() - start_time
                 printRKTC(SUCCESS, (
-                    f"{INFO}Processed: {processed_count}/{total_limit} | "    f"Current: {message_duration:.2f}s | "    f"Average: {average_time:.2f}s | "    f"Remaining: {str(timedelta(seconds=int(estimated_seconds)))}{RESET}"
+                    f"{INFO}Processed: {processed_count}/{total_limit} | "    f"Current: {message_duration:.2f}s | "    f"Average: {CYAN}{average_time:.2f}s{INFO} | "    f"Remaining: {YELLOW}{str(timedelta(seconds=int(estimated_seconds)))}{RESET}"
                 ))
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.05)
 
 # - Run Crawler
 crawler = RKTC()
