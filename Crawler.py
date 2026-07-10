@@ -42,3 +42,9 @@ class RKTC:
         if len(clean) < 20:
             return False
         return True
+    # - Method to Find Message
+    def METHOD_FIND_MESSAGE(self, messages, message_id):
+        for msg in messages:
+            if msg["id"] == message_id:
+                return msg
+        return None
