@@ -27,3 +27,7 @@ class RKTC:
             with open(filename, 'r', encoding = 'utf-8') as f:
                 return json.load(f)
         return default
+    # - Method to Save JSON
+    def METHOD_SAVE_JSON(self, filename, data):
+        with open(filename, 'w', encoding = 'utf-8') as f:
+            json.dump(data, f, ensure_ascii = False, indent = 4)
