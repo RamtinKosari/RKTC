@@ -2,6 +2,8 @@
 from Configs import *
 # - Import Log Methods
 from utils.LogMethods import *
+# - Import Category Normalizer
+from utils.CategoryNormalizer import CategoryNormalizer
 
 # - Ramtin Kosari Telegram Crawler Class
 class RKTC:
@@ -9,6 +11,8 @@ class RKTC:
     def __init__(self):
         # - Telegram Client
         self.client = None
+        # - Category Normalizer
+        self.normalizer = CategoryNormalizer()
     # - Method to Chat with the Language Model
     def METHOD_CHAT(self, prompt):
         try:
@@ -64,15 +68,17 @@ class RKTC:
         return None
     # - Method to Add New Category
     def METHOD_ADD_CATEGORY(self, categories, name):
+        # - Canonicalize Category Name
+        canonical_name = self.normalizer.METHOD_CANONICALIZE(name)
         existing = self.METHOD_FIND_CATEGORY(
             categories,
-            name
+            canonical_name
         )
         if existing:
             return existing
         new_category = {
             "id": len(categories) + 1,
-            "name": name
+            "name": canonical_name
         }
         categories.append(new_category)
         return new_category
@@ -168,6 +174,8 @@ class RKTC:
             # - Load Data
             all_messages = self.METHOD_LOAD_JSON('messages.json', [])
             categories = self.METHOD_LOAD_JSON('categories.json', [])
+            # - Rebuild Normalizer Index from Existing Categories
+            self.normalizer.METHOD_REBUILD_INDEX(categories)
             self.METHOD_BUILD_CATEGORY_MESSAGES(categories, all_messages)
             processed_ids = {
                 item['id']
@@ -175,14 +183,18 @@ class RKTC:
             }
             start_time = time.time()
             processed_count = 0
+            iteration_count = 0
             total_limit = RKTC_ITERATION_LIMIT
             durations = []
             printRKTC(SUCCESS, "Session Initialized, Starting ...")
             async for message in self.client.iter_messages(
                 RKTC_TARGET_CHANNEL,
                 limit = RKTC_ITERATION_LIMIT,
-                reverse = True
+                min_id = 116626,
+                reverse = True,
             ):
+                # - Count Iteration
+                iteration_count += 1
                 # - Start Time
                 message_start = time.time()
                 # - Ignore Processed or Non-Text Messages
@@ -274,11 +286,17 @@ class RKTC:
                 durations.append(message_duration)
                 processed_count += 1
                 average_time = sum(durations) / len(durations)
-                remaining = total_limit - processed_count
-                estimated_seconds = remaining * average_time
-                elapsed = time.time() - start_time
+                # - Estimate Remaining Time
+                remaining_iterations = total_limit - iteration_count
+                if iteration_count > 0:
+                    process_ratio = processed_count / iteration_count
+                else:
+                    process_ratio = 1.0
+                estimated_remaining_processed = remaining_iterations * process_ratio
+                estimated_seconds = estimated_remaining_processed * average_time
+                elapsed_seconds = time.time() - start_time
                 printRKTC(SUCCESS, (
-                    f"{INFO}Processed: {processed_count}/{total_limit} | "    f"Current: {message_duration:.2f}s | "    f"Average: {CYAN}{average_time:.2f}s{INFO} | "    f"Remaining: {YELLOW}{str(timedelta(seconds=int(estimated_seconds)))}{RESET}"
+                    f"{INFO}Processed: {processed_count}/{total_limit} | "    f"Iterations: {iteration_count} | "    f"Current: {message_duration:.2f}s | "    f"Average: {CYAN}{average_time:.2f}s{INFO} | "    f"Elapsed: {elapsed_seconds:.0f}s | "    f"Remaining: {YELLOW}{str(timedelta(seconds=int(estimated_seconds)))}{RESET}"
                 ))
                 await asyncio.sleep(0.05)
 
