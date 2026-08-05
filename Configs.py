@@ -16,7 +16,7 @@ RKTC_API_ID = os.environ.get("RKTC_API_ID")
 # - Telegram Account API Hash
 RKTC_API_HASH = os.environ.get("RKTC_API_HASH")
 # - Target Channel/Group
-RKTC_TARGET_CHANNEL = 'https://t.me/GermanyComma'
+RKTC_TARGET_CHANNEL = 'https://t.me/Germany_apply'
 # - Proxy Settings
 RKTC_PROXY = (socks.SOCKS5, '127.0.0.1', 2080)
 # - Language Model
@@ -26,6 +26,31 @@ RKTC_OPTIONS = {
     "temperature": 0.1,
     "top_p": 0.3
 }
+# - Project Purpose
+RKTC_PURPOSE = "Educational Apply Procedure"
+# - Category Purpose Check Prompt
+RKTC_PURPOSE_PROMPT = """
+You are a topic classifier.
+
+Purpose: {}
+Category: {}
+
+Is this category directly related to the purpose above?
+
+Examples for "Educational Apply Procedure":
+- Visa Application -> Yes
+- Embassy Appointment -> Yes
+- Document Translation -> Yes
+- Admission Received -> Yes
+- University Ranking -> No
+- General Chat -> No
+- Weather -> No
+
+Answer ONLY with one word:
+Yes
+or
+No
+"""
 # - Data File
 RKTC_DATA_FILE = 'germany_data.json'
 # - Iteration Limit
