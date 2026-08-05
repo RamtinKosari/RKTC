@@ -35,6 +35,20 @@ class RKTC:
     def METHOD_SAVE_JSON(self, filename, data):
         with open(filename, 'w', encoding = 'utf-8') as f:
             json.dump(data, f, ensure_ascii = False, indent = 4)
+    # - Method to Check if Category is Related to Project Purpose
+    def METHOD_CHECK_CATEGORY_PURPOSE(self, category_name):
+        try:
+            prompt = RKTC_PURPOSE_PROMPT.format(RKTC_PURPOSE, category_name)
+            response = self.METHOD_CHAT(prompt)
+            if response:
+                normalized = response.lower()
+                if "yes" in normalized:
+                    return "main"
+                if "no" in normalized:
+                    return "other"
+        except Exception as e:
+            printRKTC(FAILURE, "Cannot Check Category Purpose : {}{}{}".format(ERR, e, RESET))
+        return "main"
     # - Method to Check if Message is Valid
     def METHOD_IS_VALID_MESSAGE(self, text):
         if not text:
@@ -76,12 +90,25 @@ class RKTC:
         )
         if existing:
             return existing
+        # - Check Purpose
+        category_type = self.METHOD_CHECK_CATEGORY_PURPOSE(canonical_name)
         new_category = {
             "id": len(categories) + 1,
-            "name": canonical_name
+            "name": canonical_name,
+            "type": category_type
         }
         categories.append(new_category)
+        printRKTC(SUCCESS, "New Category : {}{} ({}){}".format(LIGHT_INFO, canonical_name, category_type, RESET))
         return new_category
+    # - Method to Update Missing Category Types
+    def METHOD_UPDATE_CATEGORY_TYPES(self, categories):
+        updated = False
+        for category in categories:
+            if "type" not in category or not category["type"]:
+                category["type"] = self.METHOD_CHECK_CATEGORY_PURPOSE(category["name"])
+                printRKTC(PROCESS, "Classified Category : {}{} ({}){}".format(LIGHT_INFO, category["name"], category["type"], RESET))
+                updated = True
+        return updated
     # - Method to Build Category Messages
     def METHOD_BUILD_CATEGORY_MESSAGES(
         self,
@@ -176,7 +203,12 @@ class RKTC:
             categories = self.METHOD_LOAD_JSON('categories.json', [])
             # - Rebuild Normalizer Index from Existing Categories
             self.normalizer.METHOD_REBUILD_INDEX(categories)
-            self.METHOD_BUILD_CATEGORY_MESSAGES(categories, all_messages)
+            # - Classify Missing Category Types
+            if self.METHOD_UPDATE_CATEGORY_TYPES(categories):
+                self.METHOD_SAVE_JSON('categories.json', categories)
+                self.METHOD_BUILD_CATEGORY_MESSAGES(categories, all_messages)
+            else:
+                self.METHOD_BUILD_CATEGORY_MESSAGES(categories, all_messages)
             processed_ids = {
                 item['id']
                 for item in all_messages
@@ -299,6 +331,9 @@ class RKTC:
                     f"{INFO}Processed: {processed_count}/{total_limit} | "    f"Iterations: {iteration_count} | "    f"Current: {message_duration:.2f}s | "    f"Average: {CYAN}{average_time:.2f}s{INFO} | "    f"Elapsed: {elapsed_seconds:.0f}s | "    f"Remaining: {YELLOW}{str(timedelta(seconds=int(estimated_seconds)))}{RESET}"
                 ))
                 await asyncio.sleep(0.05)
+            # - Final Category Messages Rebuild
+            self.METHOD_BUILD_CATEGORY_MESSAGES(categories, all_messages)
+            printRKTC(SUCCESS, "Finished Processing")
 
 # - Run Crawler
 crawler = RKTC()
