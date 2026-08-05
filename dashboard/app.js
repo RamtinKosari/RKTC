@@ -3,6 +3,7 @@
 let allCategories = [];
 let selectedCategories = new Set();
 let currentTheme = 'light';
+let othersExpanded = false;
 
 // DOM Elements
 const searchInput = document.getElementById('searchInput');
@@ -10,7 +11,13 @@ const startDate = document.getElementById('startDate');
 const endDate = document.getElementById('endDate');
 const resetFilters = document.getElementById('resetFilters');
 const showReplies = document.getElementById('showReplies');
-const categoryList = document.getElementById('categoryList');
+const categorySearchInput = document.getElementById('categorySearchInput');
+const mainCategoryList = document.getElementById('mainCategoryList');
+const othersCategoryList = document.getElementById('othersCategoryList');
+const othersAccordion = document.getElementById('othersAccordion');
+const othersAccordionButton = document.getElementById('othersAccordionButton');
+const othersAccordionContent = document.getElementById('othersAccordionContent');
+const othersAccordionIcon = document.getElementById('othersAccordionIcon');
 const selectAll = document.getElementById('selectAll');
 const messagesContainer = document.getElementById('messagesContainer');
 const viewTitle = document.getElementById('viewTitle');
@@ -33,8 +40,10 @@ function bindEvents() {
     startDate.addEventListener('change', renderMessages);
     endDate.addEventListener('change', renderMessages);
     showReplies.addEventListener('change', renderMessages);
+    categorySearchInput.addEventListener('input', debounce(renderCategories, 150));
     resetFilters.addEventListener('click', resetAllFilters);
     selectAll.addEventListener('click', toggleSelectAll);
+    othersAccordionButton.addEventListener('click', toggleOthersAccordion);
 }
 
 async function loadData() {
@@ -54,7 +63,9 @@ async function loadData() {
                 <div class="text-xs text-muted-foreground mt-4">Make sure the server is running and category_messages.json exists.</div>
             </div>
         `;
-        categoryList.innerHTML = `<div class="text-sm text-muted-foreground">No categories loaded</div>`;
+        mainCategoryList.innerHTML = `<div class="text-sm text-muted-foreground">No categories loaded</div>`;
+        othersCategoryList.innerHTML = '';
+        othersAccordion.classList.add('hidden');
         updateStats(0, 0, 0);
     }
 }
@@ -84,32 +95,75 @@ function toggleTheme() {
 }
 
 // Categories
+function getCategoryType(category) {
+    return category.type || 'main';
+}
+
+function isMainCategory(category) {
+    return getCategoryType(category) === 'main';
+}
+
+function getFilteredCategoriesBySearch() {
+    const query = categorySearchInput.value.trim().toLowerCase();
+    return allCategories.filter(cat => {
+        if (!query) return true;
+        return cat.category_name.toLowerCase().includes(query);
+    });
+}
+
 function renderCategories() {
-    categoryList.innerHTML = '';
+    mainCategoryList.innerHTML = '';
+    othersCategoryList.innerHTML = '';
+
+    const visibleCategories = getFilteredCategoriesBySearch();
+    const mainCategories = visibleCategories.filter(isMainCategory);
+    const otherCategories = visibleCategories.filter(c => !isMainCategory(c));
+
+    if (visibleCategories.length === 0) {
+        mainCategoryList.innerHTML = `<div class="text-sm text-muted-foreground">No matching categories</div>`;
+    }
+
+    mainCategories.forEach(cat => mainCategoryList.appendChild(createCategoryItem(cat)));
+    otherCategories.forEach(cat => othersCategoryList.appendChild(createCategoryItem(cat)));
+
+    if (otherCategories.length > 0) {
+        othersAccordion.classList.remove('hidden');
+    } else {
+        othersAccordion.classList.add('hidden');
+    }
+
     const allSelected = selectedCategories.size === allCategories.length && allCategories.length > 0;
     selectAll.textContent = allSelected ? 'Deselect all' : 'Select all';
+}
 
-    allCategories.forEach(cat => {
-        const label = document.createElement('label');
-        label.className = 'flex items-center gap-3 px-2 py-2 rounded-md hover:bg-accent cursor-pointer transition-colors group';
-        const checked = selectedCategories.has(cat.category_id);
-        label.innerHTML = `
-            <input type="checkbox" value="${cat.category_id}" class="h-4 w-4 rounded border-border bg-background text-primary focus:ring-2 focus:ring-ring" ${checked ? 'checked' : ''}>
-            <span class="text-sm flex-1 truncate text-foreground">${escapeHtml(cat.category_name)}</span>
-            <span class="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full shrink-0">${cat.messages.length}</span>
-        `;
-        const checkbox = label.querySelector('input');
-        checkbox.addEventListener('change', () => {
-            if (checkbox.checked) selectedCategories.add(cat.category_id);
-            else selectedCategories.delete(cat.category_id);
-            renderCategories();
-            renderMessages();
-        });
-        categoryList.appendChild(label);
+function createCategoryItem(cat) {
+    const label = document.createElement('label');
+    label.className = 'flex items-center gap-3 px-2 py-2 rounded-md hover:bg-accent cursor-pointer transition-colors group';
+    const checked = selectedCategories.has(cat.category_id);
+    const typeClass = isMainCategory(cat) ? 'text-primary' : 'text-muted-foreground';
+    label.innerHTML = `
+        <input type="checkbox" value="${cat.category_id}" class="h-4 w-4 rounded border-border bg-background text-primary focus:ring-2 focus:ring-ring" ${checked ? 'checked' : ''}>
+        <span class="text-sm flex-1 truncate ${typeClass}">${escapeHtml(cat.category_name)}</span>
+        <span class="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full shrink-0">${cat.messages.length}</span>
+    `;
+    const checkbox = label.querySelector('input');
+    checkbox.addEventListener('change', () => {
+        if (checkbox.checked) selectedCategories.add(cat.category_id);
+        else selectedCategories.delete(cat.category_id);
+        renderCategories();
+        renderMessages();
     });
+    return label;
+}
 
-    if (allCategories.length === 0) {
-        categoryList.innerHTML = `<div class="text-sm text-muted-foreground">No categories found</div>`;
+function toggleOthersAccordion() {
+    othersExpanded = !othersExpanded;
+    if (othersExpanded) {
+        othersAccordionContent.classList.remove('collapsed');
+        othersAccordionIcon.classList.remove('collapsed');
+    } else {
+        othersAccordionContent.classList.add('collapsed');
+        othersAccordionIcon.classList.add('collapsed');
     }
 }
 
@@ -167,6 +221,7 @@ function buildTimeline() {
                     ...msg,
                     category_id: cat.category_id,
                     category_name: cat.category_name,
+                    category_type: cat.type || 'main',
                     replies: showReplies
                 };
                 visibleParents.push(item);
@@ -200,17 +255,22 @@ function renderMessages() {
 
     messagesContainer.innerHTML = '';
     items.forEach((msg, index) => {
-        const el = createMessageElement(msg, false);
-        messagesContainer.appendChild(el);
+        const messageGroup = document.createElement('div');
+        messageGroup.className = 'message-group space-y-4';
+
+        const parentEl = createMessageElement(msg, false);
+        messageGroup.appendChild(parentEl);
 
         if (showReplies.checked && msg.replies && msg.replies.length > 0) {
             const threadContainer = document.createElement('div');
-            threadContainer.className = 'ml-8 md:ml-12 pl-4 border-l-2 border-border space-y-3 mt-2';
+            threadContainer.className = 'ml-8 md:ml-12 pl-4 border-l-2 border-border space-y-4';
             msg.replies.forEach(reply => {
                 threadContainer.appendChild(createMessageElement(reply, true));
             });
-            messagesContainer.appendChild(threadContainer);
+            messageGroup.appendChild(threadContainer);
         }
+
+        messagesContainer.appendChild(messageGroup);
 
         // Date divider between different days
         if (index < items.length - 1) {
@@ -235,13 +295,14 @@ function createMessageElement(msg, isReply) {
     wrapper.className = isReply ? 'reply-item' : 'message-item';
 
     const bubble = document.createElement('div');
-    bubble.className = `max-w-full rounded-lg border border-border bg-card p-4 shadow-sm ${isReply ? 'reply-bubble' : ''}`;
+    bubble.className = `message-bubble ${isReply ? 'reply-bubble' : ''}`;
 
     const header = document.createElement('div');
     header.className = 'flex flex-wrap items-center gap-2 mb-2';
 
     const categoryBadge = document.createElement('span');
-    categoryBadge.className = 'inline-flex items-center rounded-full border border-transparent bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground transition-colors';
+    const isMain = msg.category_type !== 'other';
+    categoryBadge.className = `inline-flex items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold transition-colors ${isMain ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`;
     categoryBadge.textContent = msg.category_name || 'Unknown';
 
     const time = document.createElement('span');
@@ -308,13 +369,16 @@ function updateViewTitle(categories) {
 function updateStats(visible, parents, categories) {
     const total = allCategories.reduce((sum, c) => sum + c.messages.length, 0);
     const replyTotal = allCategories.reduce((sum, c) => sum + c.messages.reduce((r, m) => r + (m.replies || []).length, 0), 0);
-    statsText.innerHTML = `Showing ${visible} messages (${parents} parents, ${visible - parents} replies) from ${categories} categories. Total dataset: ${total} parents, ${replyTotal} replies.`;
+    const mainCount = allCategories.filter(isMainCategory).length;
+    const otherCount = allCategories.length - mainCount;
+    statsText.innerHTML = `Showing ${visible} messages (${parents} parents, ${visible - parents} replies) from ${categories} categories. Total: ${allCategories.length} categories (${mainCount} main, ${otherCount} other), ${total} parents, ${replyTotal} replies.`;
 }
 
 function resetAllFilters() {
     searchInput.value = '';
     startDate.value = '';
     endDate.value = '';
+    categorySearchInput.value = '';
     showReplies.checked = true;
     selectedCategories = new Set(allCategories.map(c => c.category_id));
     renderCategories();
@@ -331,7 +395,7 @@ function escapeHtml(text) {
 
 function formatDateTime(iso) {
     try {
-        return new Date(iso).toLocaleString('fa-IR', {
+        return new Date(iso).toLocaleString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
@@ -345,7 +409,7 @@ function formatDateTime(iso) {
 
 function formatDate(iso) {
     try {
-        return new Date(iso).toLocaleDateString('fa-IR', {
+        return new Date(iso).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric'

@@ -4,7 +4,9 @@
 Run from the project root:
     python3 dashboard/server.py
 
-Then open http://localhost:8000 in your browser.
+Then open http://localhost:8040 in your browser.
+
+Override the port with the RKTC_DASHBOARD_PORT environment variable.
 """
 
 import http.server
@@ -13,7 +15,7 @@ import os
 import socketserver
 from pathlib import Path
 
-PORT = 8030
+PORT = int(os.environ.get("RKTC_DASHBOARD_PORT", 8040))
 DASHBOARD_DIR = Path(__file__).parent
 PROJECT_ROOT = DASHBOARD_DIR.parent
 
