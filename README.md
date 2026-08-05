@@ -85,6 +85,16 @@ To use a different port:
 RKTC_DASHBOARD_PORT=8080 python3 dashboard/server.py
 ```
 
+### Screenshots
+
+**Light theme**
+
+![Dashboard light theme](assets/light.png)
+
+**Dark theme**
+
+![Dashboard dark theme](assets/dark.png)
+
 ## Data files
 
 Generated at runtime:
